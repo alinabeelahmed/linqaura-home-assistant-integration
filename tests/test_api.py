@@ -127,3 +127,24 @@ async def test_old_firmware_without_names() -> None:
     sw = FakeSwitch()
     sw.names_supported = False
     assert await LocalClient(FakeSession(sw), "h", KEY).names() is None  # type: ignore[arg-type]
+
+
+async def test_reuses_the_salt_and_rereads_it_when_it_changed() -> None:
+    sw = FakeSwitch()
+    client = LocalClient(FakeSession(sw), "1.2.3.4", KEY)  # type: ignore[arg-type]
+    await client.channels()
+    hellos = []
+    orig = sw.handle
+    sw.handle = lambda m: (hellos.append(m) if m.get("op") == "hello" else None) or orig(m)  # type: ignore[method-assign]
+    sw.drop_sessions()
+    await client.channels()
+    assert hellos == []  # the salt from the first hello was used
+    # The switch's credential changed (new salt, same key, e.g. after a reflash): one fresh hello, no lockout count
+    from custom_components.linqaura.api.spake2p import verifier_from_password
+
+    sw.salt = b"" * 16
+    sw.w0, sw.L = verifier_from_password(KEY.encode(), sw.salt, sw.iterations)
+    sw.drop_sessions()
+    await client.channels()
+    assert len(hellos) == 1
+    assert sw.failed_pake3 == 0
