@@ -197,8 +197,10 @@ class LocalClient:
                 self._cipher = None  # out of step: start over next time
                 raise
             except CannotConnect:
-                self._cipher = None  # the switch may have restarted: its counters are gone
-                raise
+                # The session lives on: the switch keys it by sid, not by TCP connection, and a gap in the counter
+                # is allowed. A dropped keep-alive socket (the switch has three, purged oldest first) just needs the
+                # request again, sealed anew; a switch that restarted answers no_session to that.
+                reply = await self._send(plain)
             if reply is None:
                 _LOGGER.debug("session with %s was closed by the switch; opening a new one", self.host)
                 await self._open()

@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+import aiohttp
 import pytest
 
 from custom_components.linqaura.api import AuthFailed, LocalClient, LockedOut, NoLocalKey, SetupMode, identity
@@ -74,10 +75,14 @@ class FakeSession:
     def __init__(self, switch: FakeSwitch) -> None:
         self.switch = switch
         self.status = 200
+        self.drop_next = 0
 
     def post(self, url: str, json: dict[str, Any], timeout: Any = None) -> _Resp:
         import json as _json
 
+        if self.drop_next:
+            self.drop_next -= 1
+            raise aiohttp.ServerDisconnectedError()
         if self.status != 200:
             return _Resp(self.status, "no")
         return _Resp(200, _json.dumps(self.switch.handle(json)))
@@ -161,3 +166,20 @@ async def test_a_phone_handshaking_at_the_same_moment_is_not_a_wrong_key() -> No
     sw.drop_sessions()
     with pytest.raises(CannotConnect):  # still not AuthFailed: no reauth
         await client.channels()
+
+
+async def test_a_dropped_connection_keeps_the_session() -> None:
+    sw = FakeSwitch()
+    session = FakeSession(sw)
+    client = LocalClient(session, "1.2.3.4", KEY)  # type: ignore[arg-type]
+    await client.channels()
+    session.drop_next = 1
+    assert (await client.set_channel(1, True)).on[0] is True
+    assert sw.handshakes == 1  # no new handshake
+    session.drop_next = 2
+    from custom_components.linqaura.api import CannotConnect
+
+    with pytest.raises(CannotConnect):
+        await client.channels()
+    assert (await client.channels()).on[0] is True
+    assert sw.handshakes == 1
