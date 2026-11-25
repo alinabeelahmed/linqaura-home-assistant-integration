@@ -1,0 +1,29 @@
+{
+  "entity": {
+    "switch": {
+      "channel": {
+        "default": "mdi:light-switch-off",
+        "state": {
+          "on": "mdi:light-switch"
+        }
+      },
+      "child_lock": {
+        "default": "mdi:lock-open-variant-outline",
+        "state": {
+          "on": "mdi:lock"
+        }
+      },
+      "touch_lock": {
+        "default": "mdi:gesture-tap",
+        "state": {
+          "on": "mdi:hand-back-left-off"
+        }
+      }
+    },
+    "sensor": {
+      "uptime": {
+        "default": "mdi:timer-outline"
+      }
+    }
+  }
+}

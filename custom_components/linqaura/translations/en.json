@@ -1,0 +1,151 @@
+{
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "title": "Add LinqAura",
+        "description": "Connect your LinqAura switches through your LinqAura account, or connect one switch directly on your home network.",
+        "menu_options": {
+          "cloud": "Cloud (LinqAura account)",
+          "local": "Direct (local control) for one switch"
+        }
+      },
+      "cloud": {
+        "title": "Sign in to LinqAura",
+        "description": "Sign in with the e-mail and password you use in the LinqAura app. Home Assistant keeps only a sign-in token, never your password, and gets every switch on the account with live updates.",
+        "data": {
+          "email": "Email",
+          "password": "Password"
+        },
+        "data_description": {
+          "email": "The e-mail address of your LinqAura account.",
+          "password": "The password of your LinqAura account."
+        }
+      },
+      "local": {
+        "title": "Connect a switch directly",
+        "description": "Enter the address of a LinqAura switch on your home network. Switches are usually found by themselves and show up under Discovered.",
+        "data": {
+          "host": "Host"
+        },
+        "data_description": {
+          "host": "The switch's IP address or host name on your home network."
+        }
+      },
+      "discovered": {
+        "title": "LinqAura switch found",
+        "description": "How should Home Assistant connect to {name}?",
+        "menu_options": {
+          "local_key": "Direct (local control)",
+          "cloud": "Cloud (LinqAura account)"
+        },
+        "menu_option_descriptions": {
+          "local_key": "Home Assistant controls the switch on your home network, also when the internet is down. It reads the switch's key from your LinqAura account once.",
+          "cloud": "Home Assistant signs in to your LinqAura account and gets every switch on it, with live updates. Needs internet."
+        }
+      },
+      "sign_in": {
+        "title": "Get the switch's key",
+        "description": "To connect {name} directly, Home Assistant reads the switch's local key from your LinqAura account once. Sign in with the account the switch is on (as owner or shared with you). The sign-in ends right away; nothing but the key is kept.",
+        "data": {
+          "email": "Email",
+          "password": "Password"
+        },
+        "data_description": {
+          "email": "The e-mail address of your LinqAura account.",
+          "password": "The password of your LinqAura account."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Get the switch's new key",
+        "description": "{name} no longer accepts the key Home Assistant has. This happens when someone loses access to the switch and the cloud makes a new key. Continue to read the new key from your LinqAura account."
+      },
+      "reconfigure": {
+        "title": "Change the switch's address",
+        "data": {
+          "host": "Host"
+        },
+        "data_description": {
+          "host": "The switch's IP address or host name on your home network."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect",
+      "invalid_auth": "Wrong e-mail or password.",
+      "too_many_attempts": "Too many sign-in attempts. Wait a few minutes and try again.",
+      "not_linqaura": "That address doesn't answer like a LinqAura switch.",
+      "setup_mode": "The switch is in setup mode. Add it in the LinqAura app first, then try again.",
+      "not_on_account": "This switch isn't on that LinqAura account. Sign in with the account it was added to, or one it is shared with."
+    },
+    "abort": {
+      "already_configured": "Device is already configured",
+      "reauth_successful": "Re-authentication was successful",
+      "reconfigure_successful": "Reconfiguration was successful",
+      "cannot_connect": "Failed to connect",
+      "not_supported": "This device isn't a supported LinqAura switch.",
+      "setup_mode": "The switch is in setup mode. Add it in the LinqAura app first.",
+      "no_local_key": "This switch has no local key yet. Update its firmware and make sure it has been online once, then try again.",
+      "key_refused": "The switch didn't accept the key from your account. Make sure it is online so it gets its current key from the cloud, then try again.",
+      "locked_out": "The switch is refusing connections for a while after wrong attempts. Try again later.",
+      "wrong_account": "That is a different LinqAura account. Sign in with the account this entry belongs to.",
+      "wrong_switch": "A different switch answers at that address.",
+      "already_in_cloud": "This switch is already in Home Assistant through your LinqAura account (cloud)."
+    }
+  },
+  "entity": {
+    "switch": {
+      "channel": {
+        "name": "Button {number}"
+      },
+      "child_lock": {
+        "name": "Child lock"
+      },
+      "touch_lock": {
+        "name": "Button {number} touch lock"
+      }
+    },
+    "sensor": {
+      "wifi_rssi": {
+        "name": "Wi-Fi signal"
+      },
+      "uptime": {
+        "name": "Uptime"
+      }
+    },
+    "update": {
+      "firmware": {
+        "name": "Firmware"
+      }
+    }
+  },
+  "exceptions": {
+    "local_key_refused": {
+      "message": "The switch no longer accepts Home Assistant's key."
+    },
+    "locked_out": {
+      "message": "The switch refuses connections for a while after wrong attempts."
+    },
+    "setup_mode": {
+      "message": "The switch is in setup mode."
+    },
+    "cannot_reach_switch": {
+      "message": "Can't reach the switch: {error}"
+    },
+    "cloud_signed_out": {
+      "message": "The LinqAura sign-in has ended."
+    },
+    "cannot_reach_cloud": {
+      "message": "Can't reach the LinqAura cloud: {error}"
+    },
+    "command_refused": {
+      "message": "The switch refused the command ({error})."
+    },
+    "command_failed": {
+      "message": "The command didn't reach the switch: {error}"
+    },
+    "update_failed": {
+      "message": "The firmware update couldn't start: {error}"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+# Home Assistant (hassfest) and HACS checks. Manual and on releases only, to save CI minutes;
+# the tests run locally (see README).
+name: Validate
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+jobs:
+  hassfest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: home-assistant/actions/hassfest@master
+
+  hacs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: hacs/action@main
+        with:
+          category: integration

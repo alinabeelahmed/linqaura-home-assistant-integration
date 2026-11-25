@@ -1,0 +1,14 @@
+{
+  "domain": "linqaura",
+  "name": "LinqAura",
+  "codeowners": ["@alinabeelahmed"],
+  "config_flow": true,
+  "documentation": "https://github.com/alinabeelahmed/linqaura-home-assistant-integration",
+  "integration_type": "hub",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/alinabeelahmed/linqaura-home-assistant-integration/issues",
+  "loggers": ["custom_components.linqaura"],
+  "requirements": [],
+  "version": "0.1.0",
+  "zeroconf": ["_linqaura._tcp.local."]
+}
