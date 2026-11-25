@@ -33,7 +33,8 @@ from .spake2p import Prover, password_to_w0w1
 
 _LOGGER = logging.getLogger(__name__)
 
-TIMEOUT = aiohttp.ClientTimeout(total=10)
+# Measured on a switch (fw 0.7.17): hello 3.4 s, pake1 1.9 s, pake3 1.4 s, then 0.1 s per request
+TIMEOUT = aiohttp.ClientTimeout(total=15)
 CHANNELS = 4
 
 
@@ -117,9 +118,20 @@ class LocalClient:
         return hello
 
     async def _handshake(self) -> None:
+        """Opens a session. The salt from an earlier hello is reused (a hello costs seconds on the switch); if the
+        switch's confirmation then doesn't match, it is read again once before the key counts as refused."""
         self._cipher = None
         self._sid = None
-        hello = await self.read_hello()
+        fresh = self.hello is None
+        hello = self.hello if self.hello is not None else await self.read_hello()
+        try:
+            await self._pake(hello)
+        except AuthFailed:
+            if fresh:
+                raise
+            await self._pake(await self.read_hello())
+
+    async def _pake(self, hello: Hello) -> None:
         if hello.setup_mode:
             raise SetupMode("the switch is in setup mode")
         if hello.cred != "key":
@@ -134,8 +146,7 @@ class LocalClient:
         except ValueError as err:
             raise ProtocolError("bad share from the switch") from err
         if not prover.verify_peer(unb64(r1.get("cB"))):
-            # The switch's confirmation doesn't match: wrong key (the switch counts it once we send pake3 anyway,
-            # so we don't).
+            # Wrong key: stop before pake3, so nothing counts towards the switch's lockout
             raise AuthFailed("the switch's confirmation does not match the local key")
         r2 = self._check(await self._post({"op": "pake3", "cA": b64(cA)}))
         sid = r2.get("sid")
