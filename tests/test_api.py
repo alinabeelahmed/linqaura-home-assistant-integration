@@ -148,3 +148,16 @@ async def test_reuses_the_salt_and_rereads_it_when_it_changed() -> None:
     await client.channels()
     assert len(hellos) == 1
     assert sw.failed_pake3 == 0
+
+
+async def test_a_phone_handshaking_at_the_same_moment_is_not_a_wrong_key() -> None:
+    sw = FakeSwitch()
+    sw.interrupt_next = 1
+    client = LocalClient(FakeSession(sw), "1.2.3.4", KEY)  # type: ignore[arg-type]
+    assert (await client.channels()).on == [False] * 4  # retried once
+    from custom_components.linqaura.api import CannotConnect
+
+    sw.interrupt_next = 2
+    sw.drop_sessions()
+    with pytest.raises(CannotConnect):  # still not AuthFailed: no reauth
+        await client.channels()

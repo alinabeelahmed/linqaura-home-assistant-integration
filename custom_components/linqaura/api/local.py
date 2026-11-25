@@ -14,6 +14,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import random
 from dataclasses import dataclass
 from typing import Any
 
@@ -36,6 +37,10 @@ _LOGGER = logging.getLogger(__name__)
 # Measured on a switch (fw 0.7.17): hello 3.4 s, pake1 1.9 s, pake3 1.4 s, then 0.1 s per request
 TIMEOUT = aiohttp.ClientTimeout(total=15)
 CHANNELS = 4
+
+
+class HandshakeInterrupted(CannotConnect):
+    """Another device's handshake replaced ours on the switch (it keeps one at a time)."""
 
 
 @dataclass(frozen=True)
@@ -148,7 +153,12 @@ class LocalClient:
         if not prover.verify_peer(unb64(r1.get("cB"))):
             # Wrong key: stop before pake3, so nothing counts towards the switch's lockout
             raise AuthFailed("the switch's confirmation does not match the local key")
-        r2 = self._check(await self._post({"op": "pake3", "cA": b64(cA)}))
+        r2 = await self._post({"op": "pake3", "cA": b64(cA)})
+        if r2.get("ok") is not True and r2.get("err") == "auth":
+            # cB matched, so the key is right: the switch holds one handshake at a time over Wi-Fi, and another
+            # device (a phone) started one in between ours. Not a wrong key.
+            raise HandshakeInterrupted("another device was connecting at the same moment")
+        self._check(r2)
         sid = r2.get("sid")
         self._sid = sid if isinstance(sid, str) else None
         assert prover.keys is not None
@@ -169,11 +179,18 @@ class LocalClient:
             raise ProtocolError("plaintext reply to an encrypted request")
         return self._check(self._cipher.open(reply))
 
+    async def _open(self) -> None:
+        try:
+            await self._handshake()
+        except HandshakeInterrupted:
+            await asyncio.sleep(random.uniform(0.5, 2.0))  # let the other device finish
+            await self._handshake()
+
     async def request(self, plain: dict[str, Any]) -> dict[str, Any]:
         """Sends one request, opening (or reopening) the session when needed."""
         async with self._lock:
             if self._cipher is None:
-                await self._handshake()
+                await self._open()
             try:
                 reply = await self._send(plain)
             except ProtocolError:
@@ -184,7 +201,7 @@ class LocalClient:
                 raise
             if reply is None:
                 _LOGGER.debug("session with %s was closed by the switch; opening a new one", self.host)
-                await self._handshake()
+                await self._open()
                 reply = await self._send(plain)
                 if reply is None:
                     self._cipher = None

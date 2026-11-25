@@ -33,6 +33,7 @@ class FakeSwitch:
         self.requests: list[dict[str, Any]] = []
         self.names_supported = True
         self.locked_out: int | None = None
+        self.interrupt_next = 0  # another device's pake1 lands between ours and our pake3
 
     def drop_sessions(self) -> None:
         self.sessions.clear()
@@ -61,6 +62,9 @@ class FakeSwitch:
             self._pending = v
             return {"ok": True, "pB": b64(v.pB), "cB": b64(cB)}
         if op == "pake3":
+            if self.interrupt_next:
+                self.interrupt_next -= 1
+                self._pending = Verifier(CONTEXT, self.w0, self.L)  # someone else's handshake
             v, self._pending = self._pending, None
             if v is None or not v.verify_peer(unb64(msg["cA"])):
                 self.failed_pake3 += 1
