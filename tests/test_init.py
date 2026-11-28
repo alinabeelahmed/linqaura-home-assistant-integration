@@ -45,6 +45,7 @@ async def test_local_entities_and_commands(
     assert len(devs) == 1
     dev = devs[0]
     assert dev.name == "Hall" and dev.manufacturer == "LinqAura" and dev.sw_version == "0.7.17"
+    assert entry.title == "Hall"  # the entry's title follows the switch's name
 
     # Names from the switch; an unnamed button gets "Button 2"
     assert hass.states.get("switch.hall_ceiling").state == STATE_OFF

@@ -89,6 +89,8 @@ class LocalCoordinator(DataUpdateCoordinator[LocalData]):
                 data.names = await self.client.names()
                 if data.names and data.names.name:
                     sync_device_names(self.hass, self.config_entry.entry_id, {self.serial: data.names.name})
+                    if self.config_entry.title != data.names.name:  # the entry is one switch: its title follows too
+                        self.hass.config_entries.async_update_entry(self.config_entry, title=data.names.name)
                 try:
                     data.diag = await self.client.diag()
                 except LinqAuraError:
