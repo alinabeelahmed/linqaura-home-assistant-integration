@@ -41,6 +41,18 @@ if TYPE_CHECKING:
 _LOGGER = logging.getLogger(__name__)
 
 
+@callback
+def sync_device_names(hass: HomeAssistant, entry_id: str, names: dict[str, str]) -> None:
+    """A switch renamed anywhere (app, its web page, Matter, Google Home...) gets the new name in Home Assistant's
+    device list too. A name the user gave the device in Home Assistant itself (name_by_user) stays in front."""
+    registry = dr.async_get(hass)
+    for device in dr.async_entries_for_config_entry(registry, entry_id):
+        for domain, serial in device.identifiers:
+            name = names.get(serial) if domain == DOMAIN else None
+            if name and device.name != name:
+                registry.async_update_device(device.id, name=name)
+
+
 # --------------------------------------------------------------------------------------------------- direct (local)
 
 
@@ -75,6 +87,8 @@ class LocalCoordinator(DataUpdateCoordinator[LocalData]):
             data = LocalData(states, self.data.names if self.data else None, self.data.diag if self.data else {})
             if self._polls % LOCAL_SLOW_EVERY == 0:
                 data.names = await self.client.names()
+                if data.names and data.names.name:
+                    sync_device_names(self.hass, self.config_entry.entry_id, {self.serial: data.names.name})
                 try:
                     data.diag = await self.client.diag()
                 except LinqAuraError:
@@ -148,6 +162,7 @@ class CloudCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
             if isinstance(d, dict) and d.get("id") and d.get("serial") and d.get("serial") not in self._skip
         }
         self._remove_stale(data)
+        sync_device_names(self.hass, self.config_entry.entry_id, _names_of(data))
         return data
 
     def _remove_stale(self, data: dict[str, dict[str, Any]]) -> None:
@@ -229,6 +244,8 @@ class CloudCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
             return
         else:
             return
+        if kind == "names":
+            sync_device_names(self.hass, self.config_entry.entry_id, _names_of({device_id: device}))
         self.async_set_updated_data({**self.data, device_id: device})
 
     @callback
@@ -250,3 +267,7 @@ def tokens_saver(hass: HomeAssistant, entry: LinqAuraConfigEntry):
         hass.config_entries.async_update_entry(entry, data={**entry.data, CONF_TOKENS: tokens.as_dict()})
 
     return save
+
+
+def _names_of(data: dict[str, dict[str, Any]]) -> dict[str, str]:
+    return {d["serial"]: d["name"] for d in data.values() if isinstance(d.get("name"), str) and d["name"]}

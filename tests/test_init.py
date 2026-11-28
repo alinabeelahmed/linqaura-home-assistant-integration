@@ -206,3 +206,31 @@ async def test_unload(hass: HomeAssistant, cloud: FakeCloud, live: list[Any]) ->
     await _setup(hass, entry)
     assert await hass.config_entries.async_unload(entry.entry_id)
     assert entry.state is ConfigEntryState.NOT_LOADED
+
+
+async def test_cloud_rename_reaches_the_device_list(hass: HomeAssistant, cloud: FakeCloud, live: list[Any]) -> None:
+    await _setup(hass, cloud_entry())
+    registry = dr.async_get(hass)
+
+    def _dev(r: dr.DeviceRegistry) -> dr.DeviceEntry:
+        (found,) = r.async_get_devices(identifiers={(DOMAIN, SERIAL)})
+        return found
+
+    assert _dev(registry).name == "Hall switch"
+    live[0]({"type": "names", "device_id": DEVICE_ID, "name": "Kitchen", "channels": {}})
+    await hass.async_block_till_done()
+    assert _dev(registry).name == "Kitchen"
+    # a name given in Home Assistant itself stays in front
+    dev = _dev(registry)
+    registry.async_update_device(dev.id, name_by_user="Mine")
+    live[0]({"type": "names", "device_id": DEVICE_ID, "name": "Hall", "channels": {}})
+    await hass.async_block_till_done()
+    dev = _dev(registry)
+    assert dev.name == "Hall" and dev.name_by_user == "Mine"
+
+
+def test_default_name() -> None:
+    from custom_components.linqaura.entity import default_name
+
+    assert default_name("LQ28848548E964") == "LINQAURA SWITCH E964"
+    assert default_name("TG4X", "28:84:85:48:E9:64") == "LINQAURA SWITCH E964"

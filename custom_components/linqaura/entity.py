@@ -11,8 +11,11 @@ from .const import CONF_MODEL, DOMAIN, MANUFACTURER
 from .coordinator import CloudCoordinator, LocalCoordinator
 
 
-def default_name(serial: str) -> str:
-    return f"LinqAura {serial[-4:]}"
+def default_name(serial: str, mac: str | None = None) -> str:
+    """What a switch is called until its owner renames it, the same everywhere (app, cloud, the switch, Matter):
+    "LINQAURA SWITCH " + the last 4 hex digits of its Wi-Fi MAC (the serial's last 4 when the MAC isn't known)."""
+    tail = (mac or "").replace(":", "").replace("-", "")[-4:] or serial[-4:]
+    return f"LINQAURA SWITCH {tail.upper()}"
 
 
 class LocalEntity(CoordinatorEntity[LocalCoordinator]):
@@ -52,7 +55,7 @@ class CloudEntity(CoordinatorEntity[CloudCoordinator]):
             identifiers={(DOMAIN, serial)},
             manufacturer=MANUFACTURER,
             model=device.get("model") or None,
-            name=device.get("name") or default_name(serial),
+            name=device.get("name") or default_name(serial, device.get("mac")),
             serial_number=serial,
             sw_version=device.get("firmware_version"),
         )
